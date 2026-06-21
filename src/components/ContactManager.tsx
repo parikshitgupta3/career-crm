@@ -23,15 +23,28 @@ export default function ContactManager() {
 
   const fetchContacts = useCallback(async () => {
     const response = await fetch('/api/contacts');
+    if (!response.ok) {
+      setContacts([]);
+      return;
+    }
     const data = await response.json();
     setContacts(data);
   }, []);
 
   useEffect(() => {
     void (async () => {
-      const response = await fetch('/api/contacts');
-      const data = await response.json();
-      setContacts(data);
+      try {
+        const response = await fetch('/api/contacts');
+        if (!response.ok) {
+          setContacts([]);
+          return;
+        }
+        const data = await response.json();
+        setContacts(data);
+      } catch (error) {
+        console.error('Failed to load contacts', error);
+        setContacts([]);
+      }
     })();
   }, []);
 
