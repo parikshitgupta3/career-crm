@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Contact } from '@/generated/prisma';
+import { type Contact } from '@prisma/client';
 
 interface ContactFormProps {
   contact?: Contact | null;

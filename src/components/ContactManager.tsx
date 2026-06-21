@@ -11,7 +11,7 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import ContactForm from './ContactForm';
-import { Contact } from '@/generated/prisma';
+import { type Contact } from '@prisma/client';
 import { Sun, Moon, ArrowRight, ArrowLeft } from 'lucide-react';
 
 export default function ContactManager() {
