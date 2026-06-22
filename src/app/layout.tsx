@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import GlobalThemeToggle from "@/components/GlobalThemeToggle";
 import AppNav from "@/components/AppNav";
+import DbDebugPanel from "@/components/DbDebugPanel";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,6 +33,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <AppNav />
         <GlobalThemeToggle />
+        <DbDebugPanel />
         {children}
       </body>
     </html>
