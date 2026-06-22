@@ -20,6 +20,10 @@ function normalizeDatabaseUrl(rawUrl: string) {
     parsed.searchParams.set("sslmode", "require");
   }
 
+  if (parsed.hostname.includes("-pooler.")) {
+    parsed.hostname = parsed.hostname.replace("-pooler", "");
+  }
+
   return parsed.toString();
 }
 
