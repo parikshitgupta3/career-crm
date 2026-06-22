@@ -12,72 +12,64 @@ import {
 } from '@/components/ui/table';
 import ContactForm from './ContactForm';
 import { type Contact } from '@prisma/client';
-import { Sun, Moon, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
+
+const CONTACTS_CACHE_TTL_MS = 60_000;
+const CONTACTS_CACHE_KEY = 'contacts_cache';
+const CONTACTS_CACHE_TS_KEY = 'contacts_cache_ts';
+
+function clearContactsCache() {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.sessionStorage.removeItem(CONTACTS_CACHE_KEY);
+  window.sessionStorage.removeItem(CONTACTS_CACHE_TS_KEY);
+}
 
 export default function ContactManager() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const [hasInitializedTheme, setHasInitializedTheme] = useState(false);
 
   const fetchContacts = useCallback(async () => {
+    if (typeof window !== 'undefined') {
+      const cachedJson = window.sessionStorage.getItem(CONTACTS_CACHE_KEY);
+      const cachedTs = window.sessionStorage.getItem(CONTACTS_CACHE_TS_KEY);
+
+      if (cachedJson && cachedTs) {
+        const timestamp = Number(cachedTs);
+        if (!Number.isNaN(timestamp) && Date.now() - timestamp < CONTACTS_CACHE_TTL_MS) {
+          setContacts(JSON.parse(cachedJson) as Contact[]);
+          return;
+        }
+      }
+    }
+
     const response = await fetch('/api/contacts');
     if (!response.ok) {
       setContacts([]);
       return;
     }
-    const data = await response.json();
+
+    const data = (await response.json()) as Contact[];
     setContacts(data);
+
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.setItem(CONTACTS_CACHE_KEY, JSON.stringify(data));
+      window.sessionStorage.setItem(CONTACTS_CACHE_TS_KEY, String(Date.now()));
+    }
   }, []);
 
   useEffect(() => {
-    void (async () => {
-      try {
-        const response = await fetch('/api/contacts');
-        if (!response.ok) {
-          setContacts([]);
-          return;
-        }
-        const data = await response.json();
-        setContacts(data);
-      } catch (error) {
-        console.error('Failed to load contacts', error);
-        setContacts([]);
-      }
-    })();
-  }, []);
+    const timer = window.setTimeout(() => {
+      void fetchContacts();
+    }, 0);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    const stored = window.localStorage.getItem('theme');
-    if (stored) {
-      setIsDarkMode(stored === 'dark');
-      setHasInitializedTheme(true);
-      return;
-    }
-
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    setIsDarkMode(prefersDark);
-    setHasInitializedTheme(true);
-  }, []);
-
-  useEffect(() => {
-    if (!hasInitializedTheme) {
-      return;
-    }
-
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-      window.localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      window.localStorage.setItem('theme', 'light');
-    }
-  }, [isDarkMode, hasInitializedTheme]);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [fetchContacts]);
 
   const handleSave = async (contactData: Omit<Contact, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (selectedContact) {
@@ -88,7 +80,8 @@ export default function ContactManager() {
         body: JSON.stringify({ ...contactData, id: selectedContact.id }),
       });
       if (response.ok) {
-        fetchContacts();
+        clearContactsCache();
+        await fetchContacts();
         setIsFormOpen(false);
         setSelectedContact(null);
       }
@@ -100,7 +93,8 @@ export default function ContactManager() {
         body: JSON.stringify(contactData),
       });
       if (response.ok) {
-        fetchContacts();
+        clearContactsCache();
+        await fetchContacts();
         setIsFormOpen(false);
       }
     }
@@ -112,6 +106,7 @@ export default function ContactManager() {
     });
 
     if (response.ok) {
+      clearContactsCache();
       await fetchContacts();
     }
   };
@@ -120,31 +115,18 @@ export default function ContactManager() {
     <div className="p-4">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">Career CRM</h1>
-        <div className="flex flex-wrap gap-3 items-center">
-          <Button onClick={() => {
+        <Button
+          size="icon"
+          onClick={() => {
             setSelectedContact(null);
             setIsFormOpen(true);
-          }}>Add Contact</Button>
-          <button
-            type="button"
-            onClick={() => setIsDarkMode((prev) => !prev)}
-            className="flex items-center gap-3 rounded-full border border-border/70 bg-white/80 px-4 py-2 text-sm font-semibold text-foreground shadow-lg shadow-indigo-500/20 backdrop-blur transition hover:-translate-y-0.5 hover:shadow-indigo-500/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-          >
-            <span className="flex items-center justify-center rounded-full bg-indigo-500/10 p-2 text-indigo-500 dark:bg-indigo-500/20">
-              {isDarkMode ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-            </span>
-            <span className="flex flex-col leading-tight">
-              <span className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                {hasInitializedTheme ? (isDarkMode ? 'Dark' : 'Light') : 'Theme'}
-              </span>
-              <span>{hasInitializedTheme ? (isDarkMode ? 'Switch to Light' : 'Switch to Dark') : 'Loading'}</span>
-            </span>
-            <span className="flex items-center gap-1 text-indigo-500">
-              <ArrowRight className="h-3 w-3" />
-              <ArrowLeft className="h-3 w-3" />
-            </span>
-          </button>
-        </div>
+          }}
+          className="rounded-full"
+          aria-label="Add contact"
+          title="Add contact"
+        >
+          <Plus className="h-4 w-4" />
+        </Button>
       </div>
 
       <Table>
@@ -165,11 +147,29 @@ export default function ContactManager() {
               <TableCell>{contact.role}</TableCell>
               <TableCell>{contact.status}</TableCell>
               <TableCell>
-                <Button variant="ghost" onClick={() => {
-                  setSelectedContact(contact);
-                  setIsFormOpen(true);
-                }}>Edit</Button>
-                <Button variant="ghost" onClick={() => handleDelete(contact.id)}>Delete</Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="rounded-full hover:bg-blue-500/15 hover:text-blue-600 dark:hover:bg-blue-500/20 dark:hover:text-blue-300"
+                  onClick={() => {
+                    setSelectedContact(contact);
+                    setIsFormOpen(true);
+                  }}
+                  aria-label="Edit contact"
+                  title="Edit contact"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="rounded-full hover:bg-red-500/15 hover:text-red-600 dark:hover:bg-red-500/20 dark:hover:text-red-300"
+                  onClick={() => handleDelete(contact.id)}
+                  aria-label="Delete contact"
+                  title="Delete contact"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </TableCell>
             </TableRow>
           ))}

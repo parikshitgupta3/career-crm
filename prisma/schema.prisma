@@ -22,3 +22,60 @@ model Contact {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+enum JobStatus {
+  NEW
+  SAVED
+  APPLIED
+  REJECTED
+  IGNORED
+}
+
+model Company {
+  id         String   @id @default(cuid())
+
+  name       String   @unique
+
+  website    String?
+  careersUrl String?
+
+  jobs       Job[]
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Job {
+  id            String     @id @default(cuid())
+
+  companyId     String
+  company       Company    @relation(fields: [companyId], references: [id])
+
+  title         String
+
+  location      String?
+
+  description   String?
+  rawDescription String?
+
+  sourceUrl     String?
+
+  salaryMin     Int?
+  salaryMax     Int?
+  currency      String?
+
+  experienceMin Int?
+  experienceMax Int?
+
+  skills        String?
+
+  status        JobStatus  @default(NEW)
+
+  postedAt      DateTime?
+
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([companyId])
+  @@index([status])
+}
