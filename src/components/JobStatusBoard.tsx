@@ -24,13 +24,33 @@ let jobsCacheTimestamp = 0;
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   const text = await response.text();
-  const payload = text ? (JSON.parse(text) as T & { error?: string }) : null;
+  const payload = text
+    ? (JSON.parse(text) as T & { error?: string; details?: string; requestId?: string })
+    : null;
 
   if (!response.ok) {
-    const message =
+    const baseMessage =
       payload && typeof payload === "object" && "error" in payload
         ? payload.error
         : `Request failed (${response.status})`;
+
+    const details =
+      payload && typeof payload === "object" && "details" in payload && typeof payload.details === "string"
+        ? payload.details
+        : "";
+
+    const requestId =
+      payload && typeof payload === "object" && "requestId" in payload && typeof payload.requestId === "string"
+        ? payload.requestId
+        : "";
+
+    const message = [
+      baseMessage,
+      details ? `Details: ${details}` : "",
+      requestId ? `Request ID: ${requestId}` : "",
+    ]
+      .filter(Boolean)
+      .join(" | ");
 
     throw new Error(message || "Request failed");
   }
