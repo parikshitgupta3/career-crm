@@ -29,7 +29,16 @@ function normalizeDatabaseUrl(rawUrl: string) {
 
 neonConfig.poolQueryViaFetch = true;
 
-const adapter = new PrismaNeon({ connectionString: normalizeDatabaseUrl(databaseUrl) });
+const normalizedUrl = normalizeDatabaseUrl(databaseUrl);
+
+try {
+  const parsedForLog = new URL(normalizedUrl);
+  console.info("[prisma] connecting to", parsedForLog.hostname);
+} catch {
+  console.warn("[prisma] could not parse DATABASE_URL for logging");
+}
+
+const adapter = new PrismaNeon({ connectionString: normalizedUrl });
 
 export const prisma = globalForPrisma.prisma ?? new PrismaClient({ adapter });
 
